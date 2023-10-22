@@ -6,4 +6,4 @@ Sample project implementing a lightweight fascimile of CCTP.
 
 Bootstrapping the project: `forge init cctp-lite-2`
 
-
+OpenZeppelin dependencies: `forge install OpenZeppelin/openzeppelin-contracts`
