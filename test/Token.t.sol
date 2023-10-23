@@ -15,7 +15,7 @@ contract BaseSetup is FiddyCent, Test {
     address internal alice;
     address internal bob;
 
-    bytes32  contractOwner = keccak256(abi.encodePacked("user address"));
+    bytes32  contractOwner = keccak256(abi.encodePacked("owner address"));
     address ownerAddress = address(uint160(uint256(contractOwner)));
 
     constructor() FiddyCent(ownerAddress) {}
@@ -32,7 +32,7 @@ contract BaseSetup is FiddyCent, Test {
 }
 
 contract WhenTransferringTokens is BaseSetup {
-    uint256 internal maxTransferAmount = 12e18;
+    uint256 internal maxTransferAmount = 12e18 ether;
 
     function setUp() public virtual override {
         BaseSetup.setUp();
