@@ -14,7 +14,7 @@ cd anvil
 Deploy the token contract:
 
 ```
-forge script script/deploy.s.sol:DeployScript --broadcast --rpc-url http://127.0.0.1:8545 --extra-output-files abi
+forge script script/deploy.s.sol:DeployScript --broadcast --rpc-url http://127.0.0.1:8545 --extra-output-files abi --extra-output-files bin
 ```
 
 To do some FiddyCent token operations, run `scripts\deploy-details.sh` to get the contract address and an export command. Run the export command, then play with the contract.
