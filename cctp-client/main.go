@@ -2,6 +2,7 @@ package main
 
 import (
 	"cctp-client/address"
+	"cctp-client/menu"
 	"cctp-client/network"
 	"fmt"
 	"os"
@@ -20,13 +21,13 @@ func main() {
 	}
 
 	// Assert the final tea.Model to our local model and print the choice.
-	var choice string
+	var net string
 	if nm, ok := nm.(network.NetworkModel); ok && nm.Choice != "" {
-		choice = nm.Choice
-		fmt.Printf("\n---\nYou chose %s!\n", nm.Choice)
+		net = nm.Choice
+		fmt.Printf("\n---\nYou chose %s!\n", net)
 	}
 
-	addressModel, err := address.NewAddressModel(choice)
+	addressModel, err := address.NewAddressModel(net)
 	if err != nil {
 		fmt.Println("Oh no:", err)
 		os.Exit(1)
@@ -39,7 +40,44 @@ func main() {
 		os.Exit(1)
 	}
 
+	var netaddr string
+
 	if am, ok := am.(address.AddressModel); ok && am.Choice != "" {
-		fmt.Printf("\n---\nYou chose %s!\n", am.Choice)
+		netaddr = am.Choice
+		fmt.Printf("\n---\nYou chose %s!\n", netaddr)
 	}
+
+	menu := menu.NewMenu(net, netaddr)
+	doMainLoop(menu)
+
+}
+
+func doMainLoop(m menu.Menu) {
+
+	// Run returns the model as a tea.Model.
+	for {
+		p := tea.NewProgram(m)
+		mm, err := p.Run()
+		if err != nil {
+			fmt.Println("Oh no:", err)
+			os.Exit(1)
+		}
+
+		// Assert the final tea.Model to our local model and print the choice.
+		var choice string
+		if mm, ok := mm.(menu.Menu); ok && mm.Choice != "" {
+			choice = mm.Choice
+		}
+
+		if choice == menu.Quit {
+			fmt.Println("Goodbye!")
+			os.Exit(0)
+		}
+
+		doChoice(choice)
+	}
+}
+
+func doChoice(choice string) {
+	fmt.Printf("\n---\nDo %s!\n", choice)
 }
