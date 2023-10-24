@@ -7,6 +7,12 @@ const main = async () => {
             .map(t => t.contractAddress)[0];
     console.log(`FiddyCent deployed at ${fiddyAddress}`);
     console.log(`export FIDDY_CENT=${fiddyAddress}`)
+
+    transporterAddress =
+        ethDeploy.transactions.filter(t => t.contractName == "Transporter")
+            .map(t => t.contractAddress)[0];
+    console.log(`FiddyCent deployed at ${transporterAddress}`);
+    console.log(`export TRANSPORTER=${transporterAddress}`)
 }
 
 main();
