@@ -28,7 +28,7 @@ func NewMenu(network, address string) Menu {
 }
 
 func (m Menu) Init() tea.Cmd {
-	return nil
+	return tea.ClearScreen
 }
 
 func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

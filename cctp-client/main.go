@@ -2,6 +2,7 @@ package main
 
 import (
 	"cctp-client/address"
+	"cctp-client/balances"
 	"cctp-client/menu"
 	"cctp-client/network"
 	"fmt"
@@ -69,9 +70,24 @@ func doMainLoop(m menu.Menu) {
 			choice = mm.Choice
 		}
 
-		if choice == menu.Quit {
+		switch choice {
+		case menu.Quit:
 			fmt.Println("Goodbye!")
 			os.Exit(0)
+			break
+		case menu.Balances:
+			balancesModel, err := balances.NewModel(m.Network, m.Address)
+			if err != nil {
+				fmt.Println("Oh no:", err)
+				os.Exit(1)
+			}
+			if _, err := tea.NewProgram(balancesModel).Run(); err != nil {
+				fmt.Println("Error running program:", err)
+				os.Exit(1)
+			}
+			break
+		default:
+			break
 		}
 
 		doChoice(choice)
