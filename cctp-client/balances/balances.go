@@ -23,6 +23,9 @@ var ethContext = eth.NewEthereumContext()
 func getEthBalance(address string) (*big.Int, error) {
 	return ethContext.GetBalance(address)
 }
+func getEthFiddyBalance(address string) (*big.Int, error) {
+	return ethContext.GetFiddyBalance(address)
+}
 
 type balancesMsg string
 
@@ -63,7 +66,8 @@ func NewModel(network, address string) (BalancesModel, error) {
 	switch network {
 	case "Ethereum":
 		balanceFuncs = append(balanceFuncs, getEthBalance)
-		balanceItems = []string{"Eth balance"}
+		balanceFuncs = append(balanceFuncs, getEthFiddyBalance)
+		balanceItems = []string{"Eth balance", "Eth Fiddy Balance"}
 	case "Moonbeam":
 		//balanceFuncs = append(balanceFuncs, getMoonbeamBalance)
 	default:
@@ -73,6 +77,7 @@ func NewModel(network, address string) (BalancesModel, error) {
 	balances = nil
 
 	return BalancesModel{
+		address:      address,
 		BalanceItems: balanceItems,
 		balanceFuncs: balanceFuncs,
 		spinner:      s,
@@ -166,6 +171,7 @@ func (m BalancesModel) View() string {
 func retrieveBalances(pkg string, balanceOf balanceFunc, address string) tea.Cmd {
 	// This is where you'd do i/o stuff to download and install packages. In
 	// our case we're just pausing for a moment to simulate the process.
+	fmt.Printf("Retrieving balanced for address: %s\n", address)
 	d := time.Millisecond * time.Duration(rand.Intn(500)) //nolint:gosec
 	return tea.Tick(d, func(t time.Time) tea.Msg {
 		balance, err := balanceOf(address)
