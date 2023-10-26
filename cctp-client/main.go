@@ -3,6 +3,7 @@ package main
 import (
 	"cctp-client/address"
 	"cctp-client/balances"
+	"cctp-client/eth"
 	"cctp-client/menu"
 	"cctp-client/network"
 	"fmt"
@@ -75,6 +76,17 @@ func doMainLoop(m menu.Menu) {
 			fmt.Println("Goodbye!")
 			os.Exit(0)
 			break
+		case menu.ObtainFiddy:
+			/*
+				mintModel := mint.NewMintModel(m.Address)
+				if _, err := tea.NewProgram(mintModel).Run(); err != nil {
+					fmt.Println("Error running program:", err)
+					os.Exit(1)
+				}
+			*/
+			doFaucetTransder(m.Address)
+			break
+
 		case menu.Balances:
 			balancesModel, err := balances.NewModel(m.Network, m.Address)
 			if err != nil {
@@ -96,4 +108,14 @@ func doMainLoop(m menu.Menu) {
 
 func doChoice(choice string) {
 	fmt.Printf("\n---\nDo %s!\n", choice)
+}
+
+func doFaucetTransder(address string) {
+	var ethContext = eth.NewEthereumContext()
+	txn, err := ethContext.DripFiddy(address)
+	if err != nil {
+		fmt.Printf("Error dripping fiddy: %s\nq to exit", err.Error())
+	} else {
+		fmt.Printf("\n\nFaucet transaction:\n%s\nq to exit", txn)
+	}
 }
