@@ -14,8 +14,8 @@ cd anvil
 Local moonbeam:
 
 ```
-docker pull purestake/moonbeam:v0.29.0
-docker run --rm --name moonbeam_development -p 9944:9944 -p 9933:9933 purestake/moonbeam:v0.29.0 --dev --ws-external --rpc-external 
+docker pull purestake/moonbeam:v0.32.2
+docker run --rm --name moonbeam_development -p 9944:9944 -p 9933:9933 purestake/moonbeam:v0.32.2 --dev --ws-external --rpc-external 
 
 ```
 

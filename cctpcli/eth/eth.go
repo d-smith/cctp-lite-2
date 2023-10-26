@@ -20,11 +20,28 @@ type EthereumContext struct {
 }
 
 func NewEthereumContext() *EthereumContext {
-	ethClient := conn.GetEthClient()
+	ethClient := conn.GetEthClient(conn.ETHEREUM)
 
 	ethFiddyAddress := os.Getenv("FIDDY_ETH_ADDRESS")
 	if ethFiddyAddress == "" {
 		log.Fatal("FIDDY_ETH_ADDRESS not set")
+	}
+
+	ethFiddy, err := fiddy.NewFiddy(common.HexToAddress(ethFiddyAddress), ethClient)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return &EthereumContext{client: ethClient, ethFiddy: ethFiddy,
+		ethFiddyAddress: ethFiddyAddress}
+}
+
+func NewMBEthereumContext() *EthereumContext {
+	ethClient := conn.GetEthClient(conn.MOONBEAM)
+
+	ethFiddyAddress := os.Getenv("FIDDY_MB_ADDRESS")
+	if ethFiddyAddress == "" {
+		log.Fatal("FIDDY_MD_ADDRESS not set")
 	}
 
 	ethFiddy, err := fiddy.NewFiddy(common.HexToAddress(ethFiddyAddress), ethClient)
