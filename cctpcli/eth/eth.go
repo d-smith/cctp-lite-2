@@ -32,6 +32,10 @@ func NewEthereumContext() *EthereumContext {
 		log.Fatal("FIDDY_ETH_DRIP_KEY not set")
 	}
 
+	if dripKeyFromEnv[:2] == "0x" {
+		dripKeyFromEnv = dripKeyFromEnv[2:]
+	}
+
 	dripKey, err := crypto.HexToECDSA(dripKeyFromEnv)
 	if err != nil {
 		log.Fatal("Error processing key from env", err)
@@ -62,6 +66,10 @@ func NewMBEthereumContext() *EthereumContext {
 		log.Fatal("FIDDY_MB_DRIP_KEY not set")
 	}
 
+	if dripKeyFromEnv[:2] == "0x" {
+		dripKeyFromEnv = dripKeyFromEnv[2:]
+	}
+
 	dripKey, err := crypto.HexToECDSA(dripKeyFromEnv)
 	if err != nil {
 		log.Fatal("Error processing key from env", err)
@@ -69,7 +77,7 @@ func NewMBEthereumContext() *EthereumContext {
 
 	ethFiddyAddress := os.Getenv("FIDDY_MB_ADDRESS")
 	if ethFiddyAddress == "" {
-		log.Fatal("FIDDY_MD_ADDRESS not set")
+		log.Fatal("FIDDY_MB_ADDRESS not set")
 	}
 
 	ethFiddy, err := fiddy.NewFiddy(common.HexToAddress(ethFiddyAddress), ethClient)

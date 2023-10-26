@@ -12,8 +12,8 @@ import (
 // ethDripCmd represents the ethDrip command
 var ethDripCmd = &cobra.Command{
 	Use:   "ethDrip [account] [amount]",
-	Short: "Drip some Fiddy to an account",
-	Long:  `Drip some Fiddy to an account"`,
+	Short: "Drip some Fiddy to an account on the Ethereum network",
+	Long:  `Drip some Fiddy to an account on the Ethereum network. Amount is in "Fiddy"`,
 	Args:  cobra.MinimumNArgs(2),
 	Run:   dripEthCmd,
 }
