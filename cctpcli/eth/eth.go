@@ -3,6 +3,7 @@ package eth
 import (
 	"cctpcli/conn"
 	"cctpcli/fiddy"
+	"cctpcli/transporter"
 	"context"
 	"crypto/ecdsa"
 	"errors"
@@ -23,6 +24,7 @@ type EthereumContext struct {
 	ethFiddyAddress string
 	dripKey         *ecdsa.PrivateKey
 	transporterAddr common.Address
+	transporter     *transporter.Transporter
 }
 
 func NewEthereumContext() *EthereumContext {
@@ -57,11 +59,17 @@ func NewEthereumContext() *EthereumContext {
 		log.Fatal("TRANSPORTER not set")
 	}
 
+	transporter, err := transporter.NewTransporter(common.HexToAddress(transporterAddr), ethClient)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return &EthereumContext{client: ethClient,
 		ethFiddy:        ethFiddy,
 		ethFiddyAddress: ethFiddyAddress,
 		dripKey:         dripKey,
 		transporterAddr: common.HexToAddress(transporterAddr),
+		transporter:     transporter,
 	}
 }
 
@@ -97,11 +105,17 @@ func NewMBEthereumContext() *EthereumContext {
 		log.Fatal("MB_TRANSPORTER not set")
 	}
 
+	transporter, err := transporter.NewTransporter(common.HexToAddress(transportAddress), ethClient)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return &EthereumContext{client: ethClient,
 		ethFiddy:        ethFiddy,
 		ethFiddyAddress: ethFiddyAddress,
 		dripKey:         dripKey,
 		transporterAddr: common.HexToAddress(transportAddress),
+		transporter:     transporter,
 	}
 }
 
@@ -157,4 +171,46 @@ func (ec *EthereumContext) Drip(address string, amount *big.Int) (string, error)
 func (ec *EthereumContext) GetAllowance(address string) (*big.Int, error) {
 	addressForAllowance := common.HexToAddress(address)
 	return ec.ethFiddy.Allowance(&bind.CallOpts{}, addressForAllowance, ec.transporterAddr)
+}
+
+func (ec *EthereumContext) Approve(privateKey string, amount *big.Int) (string, error) {
+	if privateKey[:2] == "0x" {
+		privateKey = privateKey[2:]
+	}
+
+	key, err := crypto.HexToECDSA(privateKey)
+	if err != nil {
+		return "", err
+	}
+
+	publicKey := key.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return "", errors.New("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
+	}
+
+	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+
+	nonce, err := ec.client.PendingNonceAt(context.Background(), fromAddress)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println("nonce", nonce)
+
+	gasPrice, err := ec.client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return "", err
+	}
+
+	auth := bind.NewKeyedTransactor(key)
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.Value = big.NewInt(0)     // in wei
+	auth.GasLimit = uint64(300000) // in units
+	auth.GasPrice = gasPrice
+
+	tx, err := ec.ethFiddy.Approve(auth, ec.transporterAddr, amount)
+
+	return tx.Hash().Hex(), err
+
 }
