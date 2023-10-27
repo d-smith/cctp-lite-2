@@ -6,9 +6,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/ethereum/go-ethereum"
+	"cctpcli/transporter"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/spf13/cobra"
 )
@@ -41,13 +42,13 @@ func listener(cmd *cobra.Command, args []string) {
 		log.Fatal("TRANSPORTER")
 	}
 
-	contractAddress := common.HexToAddress(deployedAddress)
-	query := ethereum.FilterQuery{
-		Addresses: []common.Address{contractAddress},
+	transporterContract, err := transporter.NewTransporter(common.HexToAddress(deployedAddress), client)
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	logs := make(chan types.Log)
-	sub, err := client.SubscribeFilterLogs(context.Background(), query, logs)
+	channel := make(chan *transporter.TransporterMessageSent)
+	watchOpts := &bind.WatchOpts{Context: context.Background(), Start: nil}
+	sub, err := transporterContract.WatchMessageSent(watchOpts, channel)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -58,8 +59,9 @@ func listener(cmd *cobra.Command, args []string) {
 		select {
 		case err := <-sub.Err():
 			log.Fatal(err)
-		case vLog := <-logs:
-			fmt.Println(vLog) // pointer to event log
+		case ms := <-channel:
+			fmt.Println(ms)
+			fmt.Println(ms.Raw.TxHash.Hex())
 		}
 	}
 }
