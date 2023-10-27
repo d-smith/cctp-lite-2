@@ -10,6 +10,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/spf13/cobra"
 )
@@ -27,6 +29,21 @@ func init() {
 }
 
 func listener(cmd *cobra.Command, args []string) {
+
+	privateKeyFromEnv := os.Getenv("ETH_ATTESTOR_KEY")
+	if privateKeyFromEnv == "" {
+		log.Fatal("ETH_ATTESTOR_KEY not set")
+	}
+
+	if privateKeyFromEnv[:2] == "0x" {
+		privateKeyFromEnv = privateKeyFromEnv[2:]
+	}
+
+	privateKey, err := crypto.HexToECDSA(privateKeyFromEnv)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	wsURL := os.Getenv("ETH_WS_URL")
 	if wsURL == "" {
 		log.Fatal("ETH_WS_URL not set")
@@ -60,8 +77,20 @@ func listener(cmd *cobra.Command, args []string) {
 		case err := <-sub.Err():
 			log.Fatal(err)
 		case ms := <-channel:
-			fmt.Println(ms)
-			fmt.Println(ms.Raw.TxHash.Hex())
+			fmt.Println()
+
+			fmt.Printf("*** Transaction hash %s ***\n", ms.Raw.TxHash.Hex())
+
+			msgHash := crypto.Keccak256Hash(ms.Message)
+			fmt.Printf("export MESSAGE_HASH=%s\n", msgHash.Hex())
+
+			signature, err := crypto.Sign(msgHash.Bytes(), privateKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Printf("export ATTESTOR_SIG=%s\n", hexutil.Encode(signature))
+
 		}
 	}
 }

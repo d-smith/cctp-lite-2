@@ -243,8 +243,6 @@ func (ec *EthereumContext) DepositForBurn(privateKey string, amount *big.Int, re
 		return "", err
 	}
 
-	fmt.Println("nonce", nonce)
-
 	gasPrice, err := ec.client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return "", err
@@ -264,14 +262,13 @@ func (ec *EthereumContext) DepositForBurn(privateKey string, amount *big.Int, re
 	tx, err := ec.transporter.DepositForBurn(auth,
 		amount, ec.destinationDomain, recipientBytes, ec.ethFiddyAddress)
 
-	retrievedTx, isPending, err := ec.client.TransactionByHash(context.Background(), tx.Hash())
+	retrievedTx, _, err := ec.client.TransactionByHash(context.Background(), tx.Hash())
 	if err != nil {
 		fmt.Println("Error getting transaction by hash", err)
 	}
 
 	receipt, err := bind.WaitMined(context.Background(), ec.client, retrievedTx)
 
-	fmt.Println(receipt.Status, isPending, err)
 	if receipt.Status == types.ReceiptStatusFailed {
 		fmt.Println("transaction failed")
 		msg, err2 := ec.getFailingMessage(tx.Hash())

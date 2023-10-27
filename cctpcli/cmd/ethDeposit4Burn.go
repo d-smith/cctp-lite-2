@@ -40,5 +40,5 @@ func deposit4Burn(senderPrivateKey string, recipient string, amount string) {
 		return
 	}
 
-	fmt.Printf("Approved %s: txn id %s\n", amount, txnid)
+	fmt.Printf("Deposited %s: txn hash %s\n", amount, txnid)
 }
