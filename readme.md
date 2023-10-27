@@ -57,3 +57,14 @@ Bootstrapping the project: `forge init cctp-lite-2`
 OpenZeppelin dependencies: `forge install OpenZeppelin/openzeppelin-contracts`
 
 Updating foundry tool - `foundryup`
+
+
+
+go run main.go ethBalances $ACCT1
+go run main.go ethDrip $ACCT1 100
+go run main.go ethBalances $ACCT1
+go run main.go ethAllowance $ACCT1
+go run main.go ethApprove $ACCT1KEY 25
+go run main.go ethAllowance $ACCT1
+go run main.go ethDeposit4Burn $ACCT1KEY $MBACCT1 5
+

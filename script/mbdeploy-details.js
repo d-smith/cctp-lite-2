@@ -5,13 +5,11 @@ const main = async () => {
     fiddyAddress =
         ethDeploy.transactions.filter(t => t.contractName == "FiddyCent")
             .map(t => t.contractAddress)[0];
-    console.log(`FiddyCent deployed at ${fiddyAddress}`);
     console.log(`export FIDDY_MB_ADDRESS=${fiddyAddress}`)
 
     transporterAddress =
         ethDeploy.transactions.filter(t => t.contractName == "Transporter")
             .map(t => t.contractAddress)[0];
-    console.log(`Transporter deployed at ${transporterAddress}`);
     console.log(`export MB_TRANSPORTER=${transporterAddress}`)
 }
 

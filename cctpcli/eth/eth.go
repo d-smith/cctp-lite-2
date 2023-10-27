@@ -12,19 +12,22 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 type EthereumContext struct {
-	client          *ethclient.Client
-	ethFiddy        *fiddy.Fiddy
-	ethFiddyAddress string
-	dripKey         *ecdsa.PrivateKey
-	transporterAddr common.Address
-	transporter     *transporter.Transporter
+	client            *ethclient.Client
+	ethFiddy          *fiddy.Fiddy
+	ethFiddyAddress   common.Address
+	dripKey           *ecdsa.PrivateKey
+	transporterAddr   common.Address
+	transporter       *transporter.Transporter
+	destinationDomain uint32
 }
 
 func NewEthereumContext() *EthereumContext {
@@ -65,11 +68,12 @@ func NewEthereumContext() *EthereumContext {
 	}
 
 	return &EthereumContext{client: ethClient,
-		ethFiddy:        ethFiddy,
-		ethFiddyAddress: ethFiddyAddress,
-		dripKey:         dripKey,
-		transporterAddr: common.HexToAddress(transporterAddr),
-		transporter:     transporter,
+		ethFiddy:          ethFiddy,
+		ethFiddyAddress:   common.HexToAddress(ethFiddyAddress),
+		dripKey:           dripKey,
+		transporterAddr:   common.HexToAddress(transporterAddr),
+		transporter:       transporter,
+		destinationDomain: 1,
 	}
 }
 
@@ -111,11 +115,12 @@ func NewMBEthereumContext() *EthereumContext {
 	}
 
 	return &EthereumContext{client: ethClient,
-		ethFiddy:        ethFiddy,
-		ethFiddyAddress: ethFiddyAddress,
-		dripKey:         dripKey,
-		transporterAddr: common.HexToAddress(transportAddress),
-		transporter:     transporter,
+		ethFiddy:          ethFiddy,
+		ethFiddyAddress:   common.HexToAddress(ethFiddyAddress),
+		dripKey:           dripKey,
+		transporterAddr:   common.HexToAddress(transportAddress),
+		transporter:       transporter,
+		destinationDomain: 2,
 	}
 }
 
@@ -213,4 +218,103 @@ func (ec *EthereumContext) Approve(privateKey string, amount *big.Int) (string, 
 
 	return tx.Hash().Hex(), err
 
+}
+
+func (ec *EthereumContext) DepositForBurn(privateKey string, amount *big.Int, recipient string) (string, error) {
+	if privateKey[:2] == "0x" {
+		privateKey = privateKey[2:]
+	}
+
+	key, err := crypto.HexToECDSA(privateKey)
+	if err != nil {
+		return "", err
+	}
+
+	publicKey := key.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return "", errors.New("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
+	}
+
+	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+
+	nonce, err := ec.client.PendingNonceAt(context.Background(), fromAddress)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println("nonce", nonce)
+
+	gasPrice, err := ec.client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return "", err
+	}
+
+	auth := bind.NewKeyedTransactor(key)
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.Value = big.NewInt(0)     // in wei
+	auth.GasLimit = uint64(300000) // in units
+	auth.GasPrice = gasPrice
+
+	recipientBytes, err := recipient2bytes32(recipient)
+	if err != nil {
+		return "", err
+	}
+
+	tx, err := ec.transporter.DepositForBurn(auth,
+		amount, ec.destinationDomain, recipientBytes, ec.ethFiddyAddress)
+
+	retrievedTx, isPending, err := ec.client.TransactionByHash(context.Background(), tx.Hash())
+	if err != nil {
+		fmt.Println("Error getting transaction by hash", err)
+	}
+
+	receipt, err := bind.WaitMined(context.Background(), ec.client, retrievedTx)
+
+	fmt.Println(receipt.Status, isPending, err)
+	if receipt.Status == types.ReceiptStatusFailed {
+		fmt.Println("transaction failed")
+		msg, err2 := ec.getFailingMessage(tx.Hash())
+		fmt.Println(msg, err2)
+
+		return "", errors.New("Transaction failed")
+	}
+
+	return tx.Hash().Hex(), err
+}
+
+func recipient2bytes32(recipient string) ([32]byte, error) {
+	toAddress := common.HexToAddress(recipient)
+	recipientBytes := common.LeftPadBytes(toAddress.Bytes(), 32)
+	var recipientBytes32 [32]byte
+	copy(recipientBytes32[:], recipientBytes)
+	return recipientBytes32, nil
+}
+
+func (ec *EthereumContext) getFailingMessage(hash common.Hash) (string, error) {
+	tx, _, err := ec.client.TransactionByHash(context.Background(), hash)
+	if err != nil {
+		return "", err
+	}
+
+	from, err := types.Sender(types.NewEIP155Signer(tx.ChainId()), tx)
+	if err != nil {
+		return "", err
+	}
+
+	msg := ethereum.CallMsg{
+		From:     from,
+		To:       tx.To(),
+		Gas:      tx.Gas(),
+		GasPrice: tx.GasPrice(),
+		Value:    tx.Value(),
+		Data:     tx.Data(),
+	}
+
+	res, err := ec.client.CallContract(context.Background(), msg, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(res), nil
 }
