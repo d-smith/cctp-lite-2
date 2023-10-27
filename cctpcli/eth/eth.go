@@ -73,7 +73,7 @@ func NewEthereumContext() *EthereumContext {
 		dripKey:           dripKey,
 		transporterAddr:   common.HexToAddress(transporterAddr),
 		transporter:       transporter,
-		destinationDomain: 1,
+		destinationDomain: 2,
 	}
 }
 
@@ -120,7 +120,7 @@ func NewMBEthereumContext() *EthereumContext {
 		dripKey:           dripKey,
 		transporterAddr:   common.HexToAddress(transportAddress),
 		transporter:       transporter,
-		destinationDomain: 2,
+		destinationDomain: 1,
 	}
 }
 
@@ -314,4 +314,67 @@ func (ec *EthereumContext) getFailingMessage(hash common.Hash) (string, error) {
 	}
 
 	return string(res), nil
+}
+
+func (ec *EthereumContext) MintFromBurned(receiverKey string, encodedMessageSent string, encodedAttestationSignature string) (string, error) {
+	messageBytes := common.FromHex(encodedMessageSent)
+	signatureBytes := common.FromHex(encodedAttestationSignature)
+
+	if receiverKey[:2] == "0x" {
+		receiverKey = receiverKey[2:]
+	}
+
+	receiverPrivateKey, err := crypto.HexToECDSA(receiverKey)
+	if err != nil {
+		return "", err
+	}
+
+	publicKey := receiverPrivateKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return "", errors.New("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
+	}
+
+	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+
+	nonce, err := ec.client.PendingNonceAt(context.Background(), fromAddress)
+	if err != nil {
+		return "", err
+	}
+
+	gasPrice, err := ec.client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return "", err
+	}
+
+	auth := bind.NewKeyedTransactor(receiverPrivateKey)
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.Value = big.NewInt(0)     // in wei
+	auth.GasLimit = uint64(300000) // in units
+	auth.GasPrice = gasPrice
+
+	tx, err := ec.transporter.ReceiveMessage(auth, messageBytes, signatureBytes)
+	if err != nil {
+		return "", err
+	}
+
+	retrievedTx, _, err := ec.client.TransactionByHash(context.Background(), tx.Hash())
+	if err != nil {
+		return "", err
+	}
+
+	receipt, err := bind.WaitMined(context.Background(), ec.client, retrievedTx)
+	if err != nil {
+		return "", err
+	}
+
+	if receipt.Status == types.ReceiptStatusFailed {
+		fmt.Println("transaction failed")
+		msg, err2 := ec.getFailingMessage(tx.Hash())
+		fmt.Println(msg, err2)
+
+		return "", errors.New("Transaction failed")
+	}
+
+	return tx.Hash().Hex(), err
 }

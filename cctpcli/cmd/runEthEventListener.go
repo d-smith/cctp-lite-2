@@ -82,14 +82,19 @@ func listener(cmd *cobra.Command, args []string) {
 			fmt.Printf("*** Transaction hash %s ***\n", ms.Raw.TxHash.Hex())
 
 			msgHash := crypto.Keccak256Hash(ms.Message)
-			fmt.Printf("export MESSAGE_HASH=%s\n", msgHash.Hex())
-
 			signature, err := crypto.Sign(msgHash.Bytes(), privateKey)
 			if err != nil {
 				log.Fatal(err)
 			}
 
+			if signature[64] == 0 || signature[64] == 1 {
+				fmt.Println("tweaking sig...")
+				signature[64] += 27
+			}
+
 			fmt.Printf("export ATTESTOR_SIG=%s\n", hexutil.Encode(signature))
+
+			fmt.Printf("export MSG=%s\n", hexutil.Encode(ms.Message))
 
 		}
 	}

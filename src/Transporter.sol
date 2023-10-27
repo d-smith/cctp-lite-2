@@ -164,14 +164,22 @@ contract Transporter {
         // For this simplified version we assume one signature
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(digest);
         address signerAddress = ECDSA.recover(ethSignedMessageHash, attestation);
-        //if(signerAddress != remoteAttestor) revert (toString(digest));
-        if(signerAddress != remoteAttestor) revert UnrecognizedAttestation();
+        
+        //if(signerAddress != remoteAttestor) revert (Strings.toHexString(uint160(signerAddress), 20));
+        //if(signerAddress != remoteAttestor) revert UnrecognizedAttestation();
+
+         
 
         //TODO - full message verification
+        
         bytes29 _msg = message.ref(0);
+        
         if(Message._version(_msg) != messageBodyVersion) revert UnsupportedBodyVersion();
         if(Message._sourceDomain(_msg) != remoteDomain) revert UnsupportedSourceDomain();
         if(Message._destinationDomain(_msg) != localDomain) revert UnsupportedDestinationDomain();
+        
+
+        
 
         // Extract the nonce and see if we have processed this before
         uint64 sendNonce = Message._nonce(_msg);
