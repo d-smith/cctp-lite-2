@@ -22,6 +22,7 @@ type EthereumContext struct {
 	ethFiddy        *fiddy.Fiddy
 	ethFiddyAddress string
 	dripKey         *ecdsa.PrivateKey
+	transporterAddr common.Address
 }
 
 func NewEthereumContext() *EthereumContext {
@@ -51,10 +52,16 @@ func NewEthereumContext() *EthereumContext {
 		log.Fatal(err)
 	}
 
+	transporterAddr := os.Getenv("TRANSPORTER")
+	if transporterAddr == "" {
+		log.Fatal("TRANSPORTER not set")
+	}
+
 	return &EthereumContext{client: ethClient,
 		ethFiddy:        ethFiddy,
 		ethFiddyAddress: ethFiddyAddress,
 		dripKey:         dripKey,
+		transporterAddr: common.HexToAddress(transporterAddr),
 	}
 }
 
@@ -85,10 +92,16 @@ func NewMBEthereumContext() *EthereumContext {
 		log.Fatal(err)
 	}
 
+	transportAddress := os.Getenv("MB_TRANSPORTER")
+	if transportAddress == "" {
+		log.Fatal("MB_TRANSPORTER not set")
+	}
+
 	return &EthereumContext{client: ethClient,
 		ethFiddy:        ethFiddy,
 		ethFiddyAddress: ethFiddyAddress,
 		dripKey:         dripKey,
+		transporterAddr: common.HexToAddress(transportAddress),
 	}
 }
 
@@ -139,4 +152,9 @@ func (ec *EthereumContext) Drip(address string, amount *big.Int) (string, error)
 
 	tx, err := ec.ethFiddy.Transfer(auth, toAddress, amount)
 	return tx.Hash().Hex(), err
+}
+
+func (ec *EthereumContext) GetAllowance(address string) (*big.Int, error) {
+	addressForAllowance := common.HexToAddress(address)
+	return ec.ethFiddy.Allowance(&bind.CallOpts{}, addressForAllowance, ec.transporterAddr)
 }
