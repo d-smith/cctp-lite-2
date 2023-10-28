@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"log"
 	"os"
@@ -81,15 +82,16 @@ func listener(cmd *cobra.Command, args []string) {
 
 			fmt.Printf("*** Transaction hash %s ***\n", ms.Raw.TxHash.Hex())
 
+			/*
+				prefix := []byte("\x19Ethereum Signed Message:\n")
+				prefix = append(prefix, byte(len(ms.Message)))
+				fullMessage := append(prefix, ms.Message...)
+				msgHash := crypto.Keccak256Hash(fullMessage)
+			*/
 			msgHash := crypto.Keccak256Hash(ms.Message)
 			signature, err := crypto.Sign(msgHash.Bytes(), privateKey)
 			if err != nil {
 				log.Fatal(err)
-			}
-
-			if signature[64] == 0 || signature[64] == 1 {
-				fmt.Println("tweaking sig...")
-				signature[64] += 27
 			}
 
 			fmt.Printf("export ATTESTOR_SIG=%s\n", hexutil.Encode(signature))
@@ -98,4 +100,15 @@ func listener(cmd *cobra.Command, args []string) {
 
 		}
 	}
+}
+
+func personalSign(message string, privateKey *ecdsa.PrivateKey) (string, error) {
+	fullMessage := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(message), message)
+	hash := crypto.Keccak256Hash([]byte(fullMessage))
+	signatureBytes, err := crypto.Sign(hash.Bytes(), privateKey)
+	if err != nil {
+		return "", err
+	}
+	signatureBytes[64] += 27
+	return hexutil.Encode(signatureBytes), nil
 }

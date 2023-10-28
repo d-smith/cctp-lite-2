@@ -155,6 +155,32 @@ contract Transporter {
         return nonceReserved;
     }
 
+    //TODO start here
+    function recoverSigner(bytes32 message, bytes memory signature) public pure returns (address) {
+        // Split the signature into its components.
+        
+        (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
+
+        // Recover the signer address.
+        address signerAddress = ecrecover(message, v, r, s);
+
+        // Return the signer address.
+        revert("boom");
+        return signerAddress;
+    }
+    //
+
+    function verifySignature(
+        bytes32 messageHash,
+        bytes memory signature,
+        address signer
+    ) public pure returns (bool) {
+        bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        revert("ping");
+        address recoveredAddress = ecrecover(hash, uint8(signature[64]), bytes32(signature), bytes32(signature));
+        return (recoveredAddress == signer);
+    }
+
     function validateAttestation(
         bytes calldata message,
         bytes calldata attestation
@@ -162,11 +188,22 @@ contract Transporter {
         bytes32 digest = keccak256(message);
 
         // For this simplified version we assume one signature
+        //bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(message);
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(digest);
-        address signerAddress = ECDSA.recover(ethSignedMessageHash, attestation);
+        address signerAddress;
+        ECDSA.RecoverError err; 
+        bytes32 success;
+        (signerAddress, err, success) = ECDSA.tryRecover(ethSignedMessageHash, attestation);
+        if (err ==  ECDSA.RecoverError.InvalidSignature) revert("InvalidSignature");
+        if (err ==  ECDSA.RecoverError.InvalidSignatureLength) revert("InvalidSignatureLength");
+        if(err == ECDSA.RecoverError.InvalidSignatureS) revert("InvalidSignatureS");
+        if (err != ECDSA.RecoverError.NoError) revert("UnknownError");
+                
+        //address signerAddress = recoverSigner(digest, attestation);
         
+        //if(verifySignature(digest, attestation, remoteAttestor) == false) revert UnrecognizedAttestation();
         //if(signerAddress != remoteAttestor) revert (Strings.toHexString(uint160(signerAddress), 20));
-        //if(signerAddress != remoteAttestor) revert UnrecognizedAttestation();
+        if(signerAddress != remoteAttestor) revert ("UnrecognizedAttestation()");
 
          
 
