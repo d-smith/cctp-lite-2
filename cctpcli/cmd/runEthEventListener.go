@@ -82,14 +82,15 @@ func listener(cmd *cobra.Command, args []string) {
 
 			fmt.Printf("*** Transaction hash %s ***\n", ms.Raw.TxHash.Hex())
 
-			/*
-				prefix := []byte("\x19Ethereum Signed Message:\n")
-				prefix = append(prefix, byte(len(ms.Message)))
-				fullMessage := append(prefix, ms.Message...)
-				msgHash := crypto.Keccak256Hash(fullMessage)
-			*/
-			msgHash := crypto.Keccak256Hash(ms.Message)
-			signature, err := crypto.Sign(msgHash.Bytes(), privateKey)
+			//prefix := []byte("\x19Ethereum Signed Message:\n")
+			//prefix = append(prefix, byte(len(ms.Message)))
+			//fullMessage := append(prefix, ms.Message...)
+			//msgHash := crypto.Keccak256Hash(fullMessage)
+
+			//msgHash := crypto.Keccak256Hash(ms.Message)
+			//signature, err := crypto.Sign(msgHash.Bytes(), privateKey)
+			msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%x", len(ms.Message), ms.Message)
+			signature, err := crypto.Sign(crypto.Keccak256Hash([]byte(msg)).Bytes(), privateKey)
 			if err != nil {
 				log.Fatal(err)
 			}

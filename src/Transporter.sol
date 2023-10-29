@@ -203,7 +203,7 @@ contract Transporter {
         
         //if(verifySignature(digest, attestation, remoteAttestor) == false) revert UnrecognizedAttestation();
         //if(signerAddress != remoteAttestor) revert (Strings.toHexString(uint160(signerAddress), 20));
-        if(signerAddress != remoteAttestor) revert ("UnrecognizedAttestation()");
+        if(signerAddress != remoteAttestor) revert UnrecognizedAttestation();
 
          
 

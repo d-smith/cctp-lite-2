@@ -12,9 +12,9 @@ const processLogData = async (log) => {
     console.log(log);
 
     const messageBytes = web3.eth.abi.decodeParameters(['bytes'], log.data)[0];
-    console.log(`messageBytes: ${messageBytes}`);
+    //console.log(`messageBytes: ${messageBytes}`);
     const messageHash = web3.utils.keccak256(messageBytes);
-    console.log(`messageHash: ${messageHash}`);
+    //console.log(`messageHash: ${messageHash}`);
 
     let messageBody = {
         message: log.data,
@@ -23,6 +23,13 @@ const processLogData = async (log) => {
 
     const signed = web3.eth.accounts.sign(messageHash,signingKey);
     console.log(`signed: ${JSON.stringify(signed)}`);
+
+    console.log(`\n*** Transaction hash ${log.transactionHash} ***`);
+    console.log(`export ATTESTOR_SIG=${signed.signature}`);
+    console.log(`export MSG=${messageBytes}`)
+
+
+
 
 }
 
