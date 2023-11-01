@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"crypto/ecdsa"
@@ -14,25 +14,14 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gorilla/mux"
 	"github.com/holiman/uint256"
-	"github.com/spf13/cobra"
-	"github.com/urfave/negroni"
-
 	"github.com/mattn/go-sqlite3"
+	"github.com/urfave/negroni"
 )
-
-// runAttestorCmd represents the runAttestor command
-var runAttestorCmd = &cobra.Command{
-	Use:   "runAttestor",
-	Short: "Run the attestor API",
-	Long:  `Run the attestor API`,
-	Run:   api,
-}
 
 var attestorPrivateKey *ecdsa.PrivateKey
 var db *sql.DB
 
 func init() {
-	rootCmd.AddCommand(runAttestorCmd)
 
 	privateKeyFromEnv := os.Getenv("ETH_ATTESTOR_KEY")
 	if privateKeyFromEnv == "" {
@@ -59,7 +48,7 @@ func init() {
 	}
 }
 
-func api(cmd *cobra.Command, args []string) {
+func main() {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/api/v1/attestor/attest", storeAttestation).Methods("POST")
@@ -70,7 +59,6 @@ func api(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatalln("Error starting server", err)
 	}
-
 }
 
 func storeAttestation(w http.ResponseWriter, r *http.Request) {
