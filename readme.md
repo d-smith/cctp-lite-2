@@ -143,6 +143,8 @@ Fiddy Balance: 3
 
 ## Misc
 
+Create the db in the cmd directory `sqlite3 attestor.db < att.sql`
+
 To do some FiddyCent token operations, run `scripts\deploy-details.sh` to get the contract address and an export command. Run the export command, then play with the contract.
 
 ```

@@ -1,3 +1,5 @@
+attestor.db
+
 .certora_internal/
 broadcast/*
 node_modules/

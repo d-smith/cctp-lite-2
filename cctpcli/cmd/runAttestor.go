@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"crypto/ecdsa"
+	"database/sql"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -15,6 +16,8 @@ import (
 	"github.com/holiman/uint256"
 	"github.com/spf13/cobra"
 	"github.com/urfave/negroni"
+
+	"github.com/mattn/go-sqlite3"
 )
 
 // runAttestorCmd represents the runAttestor command
@@ -26,6 +29,7 @@ var runAttestorCmd = &cobra.Command{
 }
 
 var attestorPrivateKey *ecdsa.PrivateKey
+var db *sql.DB
 
 func init() {
 	rootCmd.AddCommand(runAttestorCmd)
@@ -39,10 +43,19 @@ func init() {
 		privateKeyFromEnv = privateKeyFromEnv[2:]
 	}
 
-	var attKeyErr error
-	attestorPrivateKey, attKeyErr = crypto.HexToECDSA(privateKeyFromEnv)
-	if attKeyErr != nil {
-		log.Fatal(attKeyErr)
+	var err error
+	attestorPrivateKey, err = crypto.HexToECDSA(privateKeyFromEnv)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Initializing DB...")
+	v, _, _ := sqlite3.Version()
+	log.Println("Opening sqlite with driver version", v)
+
+	db, err = sql.Open("sqlite3", "attestor.db")
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -68,6 +81,7 @@ func storeAttestation(w http.ResponseWriter, r *http.Request) {
 	message, err := io.ReadAll(r.Body)
 	if err != nil {
 		if err != nil {
+			log.Println(err)
 			http.Error(w, err.Error(), 500)
 			return
 		}
@@ -75,25 +89,51 @@ func storeAttestation(w http.ResponseWriter, r *http.Request) {
 
 	parsedMessage, err := parseMessageSent(message)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 
 	printMessage(parsedMessage)
 
+	signature, err := signMessage(message)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	res, err := db.Exec("INSERT INTO attestations (nonce, sender, receiver, source_domain, dest_domain, amount, message, signature)	 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		parsedMessage.Nonce, parsedMessage.Sender, parsedMessage.Recipient,
+		parsedMessage.LocalDomain, parsedMessage.RemoteDomain,
+		parsedMessage.BurnMessage.Amount,
+		hexutil.Encode(message), hexutil.Encode(signature))
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	var id int64
+	if id, err = res.LastInsertId(); err != nil {
+		log.Println("Error getting last insert id", err)
+	} else {
+		log.Println("Inserted row with id", int(id))
+	}
+}
+
+func signMessage(message []byte) ([]byte, error) {
 	msgHash := crypto.Keccak256Hash(message)
 	stamp := []byte("\x19Ethereum Signed Message:\n32")
 	signature, err := crypto.Sign(crypto.Keccak256Hash(stamp, msgHash.Bytes()).Bytes(), attestorPrivateKey)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	if signature[crypto.RecoveryIDOffset] == 0 || signature[crypto.RecoveryIDOffset] == 1 {
 		signature[crypto.RecoveryIDOffset] += 27
 	}
-
-	fmt.Printf("export ATTESTOR_SIG=%s\n", hexutil.Encode(signature))
-
-	fmt.Printf("export MSG=%s\n", hexutil.Encode(message))
+	return signature, nil
 }
 
 type MessageSent struct {
@@ -215,15 +255,4 @@ func printMessage(m *MessageSent) {
 	fmt.Printf("  Mint recipient: %s\n", m.BurnMessage.MintRecipient)
 	fmt.Printf("  Amount: %d\n", m.BurnMessage.Amount)
 	fmt.Printf("  Sender: %s\n", m.BurnMessage.Sender)
-}
-
-func personalSign(message string, privateKey *ecdsa.PrivateKey) (string, error) {
-	fullMessage := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(message), message)
-	hash := crypto.Keccak256Hash([]byte(fullMessage))
-	signatureBytes, err := crypto.Sign(hash.Bytes(), privateKey)
-	if err != nil {
-		return "", err
-	}
-	signatureBytes[64] += 27
-	return hexutil.Encode(signatureBytes), nil
 }
