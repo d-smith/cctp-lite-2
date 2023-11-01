@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"database/sql"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -54,7 +55,7 @@ func main() {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/api/v1/attestor/attest", storeAttestation).Methods("POST")
-	r.HandleFunc("/api/v1/attestor/receipts/{sourceDomain}/{recipient}", listReceipts).Methods("GET")
+	r.HandleFunc("/api/v1/attestor/receipts/{destDomain}/{recipient}", listReceipts).Methods("GET")
 	n := negroni.Classic()
 	n.UseHandler(r)
 
@@ -248,24 +249,36 @@ func printMessage(m *MessageSent) {
 	fmt.Printf("  Sender: %s\n", m.BurnMessage.Sender)
 }
 
+type Receipt struct {
+	Id           int    `json:"id"`
+	Nonce        uint64 `json:"nonce"`
+	Sender       string `json:"sender"`
+	Recipient    string `json:"recipient"`
+	SourceDomain uint32 `json:"sourceDomain"`
+	DestDomain   uint32 `json:"destDomain"`
+	Amount       uint64 `json:"amount"`
+	Message      string `json:"message"`
+	Signature    string `json:"signature"`
+}
+
 func listReceipts(w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r)
-	sourceDomain := params["sourceDomain"]
+	destDomain := params["destDomain"]
 	recipient := strings.ToLower(params["recipient"])
 
-	if (sourceDomain == "") || (recipient == "") {
-		http.Error(w, "sourceDomain and recipient must be specified", 400)
+	if (destDomain == "") || (recipient == "") {
+		http.Error(w, "destDomain and recipient must be specified", 400)
 		return
 	}
 
-	sdVal, err := strconv.ParseUint(sourceDomain, 10, 32)
+	ddVal, err := strconv.ParseUint(destDomain, 10, 32)
 	if err != nil {
-		http.Error(w, "sourceDomain must be a number", 400)
+		http.Error(w, "destDomain must be a number", 400)
 		return
 	}
 
-	rows, err := db.Query("SELECT nonce, sender, receiver, source_domain, dest_domain, amount, message, signature FROM attestations WHERE source_domain = ? AND receiver = ?", sdVal, recipient)
+	rows, err := db.Query("SELECT id, nonce, sender, receiver, source_domain, dest_domain, amount, message, signature FROM attestations WHERE dest_domain = ? AND receiver = ?", ddVal, recipient)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), 500)
@@ -274,24 +287,22 @@ func listReceipts(w http.ResponseWriter, r *http.Request) {
 
 	defer rows.Close()
 
-	for rows.Next() {
-		var nonce uint64
-		var sender string
-		var receiver string
-		var sourceDomain uint32
-		var destDomain uint32
-		var amount uint64
-		var message string
-		var signature string
+	var receipts []Receipt
 
-		err = rows.Scan(&nonce, &sender, &receiver, &sourceDomain, &destDomain, &amount, &message, &signature)
+	for rows.Next() {
+		var receipt Receipt
+
+		err = rows.Scan(&receipt.Id, &receipt.Nonce, &receipt.Sender, &receipt.Recipient, &receipt.SourceDomain, &receipt.DestDomain, &receipt.Amount, &receipt.Message, &receipt.Signature)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), 500)
 			return
 		}
 
-		fmt.Fprintf(w, "%d %s %s %d %d %d %s %s\n", nonce, sender, receiver, sourceDomain, destDomain, amount, message, signature)
+		receipts = append(receipts, receipt)
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(receipts)
 }
