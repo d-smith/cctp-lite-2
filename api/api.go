@@ -9,6 +9,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -52,6 +54,7 @@ func main() {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/api/v1/attestor/attest", storeAttestation).Methods("POST")
+	r.HandleFunc("/api/v1/attestor/receipts/{sourceDomain}/{recipient}", listReceipts).Methods("GET")
 	n := negroni.Classic()
 	n.UseHandler(r)
 
@@ -168,8 +171,8 @@ func parseMessageSent(messageSent []byte) (*MessageSent, error) {
 		LocalDomain:    localDomain,
 		RemoteDomain:   remoteDomain,
 		Nonce:          nonce,
-		Sender:         senderHex,
-		Recipient:      recipientHex,
+		Sender:         strings.ToLower(senderHex),
+		Recipient:      strings.ToLower(recipientHex),
 		BurnMessage:    parsedBurnMessage,
 	}, nil
 }
@@ -223,9 +226,9 @@ func parseBurnMessage(burnMessage []byte) (*BurnMessage, error) {
 	return &BurnMessage{
 		Version:       burnMessageVersion,
 		BurnToken:     hexutil.Encode(burnToken[12:32]),
-		MintRecipient: hexutil.Encode(mintRecipient[12:32]),
+		MintRecipient: strings.ToLower(hexutil.Encode(mintRecipient[12:32])),
 		Amount:        amountDec,
-		Sender:        hexutil.Encode(sender[12:32]),
+		Sender:        strings.ToLower(hexutil.Encode(sender[12:32])),
 	}, nil
 }
 
@@ -243,4 +246,52 @@ func printMessage(m *MessageSent) {
 	fmt.Printf("  Mint recipient: %s\n", m.BurnMessage.MintRecipient)
 	fmt.Printf("  Amount: %d\n", m.BurnMessage.Amount)
 	fmt.Printf("  Sender: %s\n", m.BurnMessage.Sender)
+}
+
+func listReceipts(w http.ResponseWriter, r *http.Request) {
+
+	params := mux.Vars(r)
+	sourceDomain := params["sourceDomain"]
+	recipient := strings.ToLower(params["recipient"])
+
+	if (sourceDomain == "") || (recipient == "") {
+		http.Error(w, "sourceDomain and recipient must be specified", 400)
+		return
+	}
+
+	sdVal, err := strconv.ParseUint(sourceDomain, 10, 32)
+	if err != nil {
+		http.Error(w, "sourceDomain must be a number", 400)
+		return
+	}
+
+	rows, err := db.Query("SELECT nonce, sender, receiver, source_domain, dest_domain, amount, message, signature FROM attestations WHERE source_domain = ? AND receiver = ?", sdVal, recipient)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var nonce uint64
+		var sender string
+		var receiver string
+		var sourceDomain uint32
+		var destDomain uint32
+		var amount uint64
+		var message string
+		var signature string
+
+		err = rows.Scan(&nonce, &sender, &receiver, &sourceDomain, &destDomain, &amount, &message, &signature)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		fmt.Fprintf(w, "%d %s %s %d %d %d %s %s\n", nonce, sender, receiver, sourceDomain, destDomain, amount, message, signature)
+	}
+
 }
