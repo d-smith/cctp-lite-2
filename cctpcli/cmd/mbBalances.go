@@ -63,13 +63,16 @@ func getMBBalances(address string) {
 
 	fmt.Printf("Claims:\n")
 	for _, claim := range claims {
-		fmt.Printf("Claim id  %d: Source domain %d -> Destination domain %d, Amount %d\n", claim.Id, claim.SourceDomain, claim.DestDomain, claim.Amount)
+		if claim.Spent == false {
+			fmt.Printf("  Claim id %d :: Source domain %d -> Destination domain %d, Claimable Amount %d\n", claim.Id, claim.SourceDomain, claim.DestDomain, claim.Amount)
+		}
 	}
 
 }
 
 type Receipt struct {
 	Id           int    `json:"id"`
+	Spent        bool   `json:"spent"`
 	Nonce        uint64 `json:"nonce"`
 	Sender       string `json:"sender"`
 	Recipient    string `json:"recipient"`

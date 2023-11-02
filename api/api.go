@@ -56,6 +56,7 @@ func main() {
 
 	r.HandleFunc("/api/v1/attestor/attest", storeAttestation).Methods("POST")
 	r.HandleFunc("/api/v1/attestor/receipts/{destDomain}/{recipient}", listReceipts).Methods("GET")
+	r.HandleFunc("/api/v1/attestor/receipts/setspent/{id}", setSpent).Methods("PUT")
 	n := negroni.Classic()
 	n.UseHandler(r)
 
@@ -251,6 +252,7 @@ func printMessage(m *MessageSent) {
 
 type Receipt struct {
 	Id           int    `json:"id"`
+	Spent        bool   `json:"spent"`
 	Nonce        uint64 `json:"nonce"`
 	Sender       string `json:"sender"`
 	Recipient    string `json:"recipient"`
@@ -259,6 +261,44 @@ type Receipt struct {
 	Amount       uint64 `json:"amount"`
 	Message      string `json:"message"`
 	Signature    string `json:"signature"`
+}
+
+func setSpent(w http.ResponseWriter, r *http.Request) {
+
+	params := mux.Vars(r)
+	id := params["id"]
+
+	if id == "" {
+		http.Error(w, "id must be specified", 400)
+		return
+	}
+
+	idVal, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		http.Error(w, "id must be a number", 400)
+		return
+	}
+
+	res, err := db.Exec("UPDATE attestations SET spent = true WHERE id = ?", idVal)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	if rowsAffected == 0 {
+		http.Error(w, "id not found", 404)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func listReceipts(w http.ResponseWriter, r *http.Request) {
@@ -278,7 +318,7 @@ func listReceipts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.Query("SELECT id, nonce, sender, receiver, source_domain, dest_domain, amount, message, signature FROM attestations WHERE dest_domain = ? AND receiver = ?", ddVal, recipient)
+	rows, err := db.Query("SELECT id, spent, nonce, sender, receiver, source_domain, dest_domain, amount, message, signature FROM attestations WHERE dest_domain = ? AND receiver = ?", ddVal, recipient)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), 500)
@@ -292,7 +332,7 @@ func listReceipts(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var receipt Receipt
 
-		err = rows.Scan(&receipt.Id, &receipt.Nonce, &receipt.Sender, &receipt.Recipient, &receipt.SourceDomain, &receipt.DestDomain, &receipt.Amount, &receipt.Message, &receipt.Signature)
+		err = rows.Scan(&receipt.Id, &receipt.Spent, &receipt.Nonce, &receipt.Sender, &receipt.Recipient, &receipt.SourceDomain, &receipt.DestDomain, &receipt.Amount, &receipt.Message, &receipt.Signature)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), 500)
