@@ -154,8 +154,6 @@ func (ec *EthereumContext) Drip(address string, amount *big.Int) (string, error)
 		return "", err
 	}
 
-	fmt.Println("nonce", nonce)
-
 	gasPrice, err := ec.client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return "", err
@@ -200,8 +198,6 @@ func (ec *EthereumContext) Approve(privateKey string, amount *big.Int) (string, 
 	if err != nil {
 		return "", err
 	}
-
-	fmt.Println("nonce", nonce)
 
 	gasPrice, err := ec.client.SuggestGasPrice(context.Background())
 	if err != nil {

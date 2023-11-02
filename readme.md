@@ -82,59 +82,83 @@ $ . .env
 
 ```console
 $ # Show starting balances
-$ go run main.go ethBalances $ACCT1
+$ cctpcli ethBalances $ACCT3
 ETH Balance: 10000000000000000000000
 Fiddy Balance: 0
-$ go run main.go mbBalances $MBACCT1
+No claims found for address
+
+$ cctpcli mbBalances $MBACCT3
 ETH Balance: 1208925819614629174706176
 Fiddy Balance: 0
+No claims found for address
 ```
 
 ```console
 $ # Use the faucet to obtain some Fiddy on the Ethereum side
-$ go run main.go ethDrip $ACCT1 100
-nonce 4
-Dripped 100 to 0x9949f7e672a568bB3EBEB777D5e8D1c1107e96E5: txn id 0xf6a04f0c2b2613347ebd96588028fc6d03984cc36066ccffeaf0a3e6e8a81fe4
-$ go run main.go ethBalances $ACCT1
+$ cctpcli ethDrip $ACCT3 50
+Dripped 50 to 0x7bA7d161F9E8B707694f434d65c218a1F0853B1C: txn id 0x6ceaa362fac94e32e834745d06e50ed9569c5621b9b387603d93a4d8cd85eeed
+
+$ cctpcli ethBalances $ACCT3
 ETH Balance: 10000000000000000000000
-Fiddy Balance: 100
+Fiddy Balance: 50
 ```
 
 ```console
 $ # Authorize the transport contract to spend Fiddy on behalf of ACCT1
-$ go run main.go ethAllowance $ACCT1
+$ cctpcli ethAllowance $ACCT3
 Allowance: 0
+
 $ go run main.go ethApprove $ACCT1KEY 25
-nonce 0
 Approved 25: txn id 0x8fb8840e347838277d373a76c63a496a840252cfa088af9ce76761e3a5f7ff71
-$ go run main.go ethAllowance $ACCT1
+
+$ cctpcli ethAllowance $ACCT3
 Allowance: 25
 ```
 
 ```console
-$ go run main.go ethDeposit4Burn $ACCT1KEY $MBACCT1 3
-Deposited 3: txn hash 0xbbc040b7eb5fcdabe1460215b2bfa41a6365467afe0e6cac7ef11beb20ed14b2
+$ # Deposit 5 Fiddy on the Ethereum side for transport to Moonbeam
+$ cctpcli ethDeposit4Burn $ACCT3KEY $MBACCT3 5
+Deposited 5: txn hash 0x957bfe8a77ef16cd3f67077bc645f24966bffdfdb233d90bb1ebb132372e9325
+
+$ cctpcli ethDeposit4Burn $ACCT3KEY $MBACCT3 10
+Deposited 10: txn hash 0x5efcc307b5df7b3312086c538ed14b4d65b02c20df93d933ca46d9b47234ae50
 ```
 
 ```console
-$ # Grab the env var export from the listener console and set the vars
-$ export ATTESTOR_SIG=0x91a8b4c77e19a30fe80936eae954a4a67d0edf6cd9959f79aa2b5cd24a3f4f4b61cd1bb7828667ecd9b55cd8464131c4664b0d9410df0a86ccc8e6179d3f11471c
-$ export MSG=0x00000001000000010000000200000000000000000000000000000000000000009949f7e672a568bb3ebeb777d5e8d1c1107e96e50000000000000000000000003cd0a705a2dc65e5b1e1205896baa2be8a07c6e000000001000000000000000000000000c0a4b9e04fb55b1b498c634faeeb7c8dd5895b530000000000000000000000003cd0a705a2dc65e5b1e1205896baa2be8a07c6e000000000000000000000000000000000000000000000000000000000000000030000000000000000000000009949f7e672a568bb3ebeb777d5e8d1c1107e96e5
+$ # View available claims on the Moonbeam side
+$ cctpcli mbBalances $MBACCT3
+ETH Balance: 1208925819614629174706176
+Fiddy Balance: 0
+Claims:
+  Claim id 1 :: Source domain 1 -> Destination domain 2, Claimable Amount 5
+  Claim id 2 :: Source domain 1 -> Destination domain 2, Claimable Amount 10
 ```
 
 ```console
-$ # Claim that Fiddy for the recipient address on Moonbeam!
-$ go run main.go mbMintFromBurned $MBACCT1KEY $MSG $ATTESTOR_SIG
-Minted: txn hash 0x7eaa8623ec02317efa0bf61dceb479058dbba039bb78e6a7dff418f1421bf9ce
+$ # Claim 10 Fiddy on the Moonbeam side
+$ cctpcli mbMintFromBurned $MBACCT3 $MBACCT3KEY 2
+Minted: txn hash 0x036f2d3cd8500cf4d48c37a89c38cc8556cc466475c9577f6cb50afb655c0f44
+
+$ cctpcli mbBalances $MBACCT3
+ETH Balance: 1208925818413956864309442
+Fiddy Balance: 10
+Claims:
+  Claim id 1 :: Source domain 1 -> Destination domain 2, Claimable Amount 5
 ```
 
 ```console
-$ go run main.go ethBalances $ACCT1
-ETH Balance: 9999999795971045943794
-Fiddy Balance: 97
-$ go run main.go mbBalances $MBACCT1
-ETH Balance: 1208925818405840093529545
-Fiddy Balance: 3
+$ # Show final balances
+$ cctpcli ethBalances $ACCT3
+ETH Balance: 9999999829348848426872
+Fiddy Balance: 35
+No claims found for address
+
+
+$ cctpcli mbBalances $MBACCT3
+ETH Balance: 1208925818413956864309442
+Fiddy Balance: 10
+Claims:
+  Claim id 1 :: Source domain 1 -> Destination domain 2, Claimable Amount 5
 ```
 
 
