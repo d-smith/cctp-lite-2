@@ -162,7 +162,11 @@ Claims:
 ```
 
 
+## Refining the Implementation
 
+1. Initial implementation - receive smart contract MessageSent event, sign an attestation and emit it to stdout. Use the output with the command line to claim the tokens on the remote chain.
+2. (Current) Modify the event listener to store the attestation in a database by invoking an API. Add a command to claim the tokens on the remote chain using the attestation id.
+3. Modify the API to store the message details in the data with producing an attestation signature. Modify the retrieval API to check the number of confirmations of the transaction, and return the attestation only after a threshold of confirmations is reached.
 
 
 ## Misc

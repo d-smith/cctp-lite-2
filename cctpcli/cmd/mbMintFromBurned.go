@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"cctpcli/eth"
@@ -72,4 +73,31 @@ func mintFromBurned(receiverAddress, receiverKey, claimId string) {
 	}
 
 	fmt.Printf("Minted: txn hash %s\n", txnid)
+
+	err = setClaimAsSpent(claim.Id)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("Claim marked as spent")
+}
+
+func setClaimAsSpent(claimId int) error {
+	url := fmt.Sprintf("http://localhost:3010/api/v1/attestor/receipts/setspent/%d", claimId)
+	req, err := http.NewRequest(http.MethodPut, url, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("error updating claim status")
+	}
+
+	return nil
 }
