@@ -54,7 +54,7 @@ func init() {
 func main() {
 	r := mux.NewRouter()
 
-	r.HandleFunc("/api/v1/attestor/attest", storeAttestation).Methods("POST")
+	r.HandleFunc("/api/v1/attestor/attest/{txnid}", storeAttestation).Methods("POST")
 	r.HandleFunc("/api/v1/attestor/receipts/{destDomain}/{recipient}", listReceipts).Methods("GET")
 	r.HandleFunc("/api/v1/attestor/receipts/setspent/{id}", setSpent).Methods("PUT")
 	n := negroni.Classic()
@@ -68,6 +68,11 @@ func main() {
 
 func storeAttestation(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Called storeAttestation")
+
+	params := mux.Vars(r)
+	txnid := params["txnid"]
+
+	fmt.Printf("storing message data for txnid: %s\n", txnid)
 
 	defer r.Body.Close()
 
@@ -89,18 +94,19 @@ func storeAttestation(w http.ResponseWriter, r *http.Request) {
 
 	printMessage(parsedMessage)
 
-	signature, err := signMessage(message)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	res, err := db.Exec("INSERT INTO attestations (nonce, sender, receiver, source_domain, dest_domain, amount, message, signature)	 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+	/*
+		signature, err := signMessage(message)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), 500)
+			return
+		}
+	*/
+	res, err := db.Exec("INSERT INTO attestations (nonce, sender, receiver, source_domain, dest_domain, amount, message, txnid)	 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		parsedMessage.Nonce, parsedMessage.Sender, parsedMessage.Recipient,
 		parsedMessage.LocalDomain, parsedMessage.RemoteDomain,
 		parsedMessage.BurnMessage.Amount,
-		hexutil.Encode(message), hexutil.Encode(signature))
+		hexutil.Encode(message), txnid)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), 500)
@@ -260,7 +266,7 @@ type Receipt struct {
 	DestDomain   uint32 `json:"destDomain"`
 	Amount       uint64 `json:"amount"`
 	Message      string `json:"message"`
-	Signature    string `json:"signature"`
+	TxnId        string `json:"txnid"`
 }
 
 func setSpent(w http.ResponseWriter, r *http.Request) {
@@ -318,7 +324,7 @@ func listReceipts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.Query("SELECT id, spent, nonce, sender, receiver, source_domain, dest_domain, amount, message, signature FROM attestations WHERE dest_domain = ? AND receiver = ?", ddVal, recipient)
+	rows, err := db.Query("SELECT id, spent, nonce, sender, receiver, source_domain, dest_domain, amount, message, txnid FROM attestations WHERE dest_domain = ? AND receiver = ?", ddVal, recipient)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), 500)
@@ -332,7 +338,7 @@ func listReceipts(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var receipt Receipt
 
-		err = rows.Scan(&receipt.Id, &receipt.Spent, &receipt.Nonce, &receipt.Sender, &receipt.Recipient, &receipt.SourceDomain, &receipt.DestDomain, &receipt.Amount, &receipt.Message, &receipt.Signature)
+		err = rows.Scan(&receipt.Id, &receipt.Spent, &receipt.Nonce, &receipt.Sender, &receipt.Recipient, &receipt.SourceDomain, &receipt.DestDomain, &receipt.Amount, &receipt.Message, &receipt.TxnId)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), 500)

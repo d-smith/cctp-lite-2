@@ -65,7 +65,7 @@ func listener(cmd *cobra.Command, args []string) {
 		case ms := <-channel:
 			fmt.Println()
 
-			err := postMessageBytesToAttestor(ms.Message)
+			err := postMessageBytesToAttestor(ms.Message, ms.Raw.TxHash.Hex())
 			if err != nil {
 				log.Println(err)
 			}
@@ -76,8 +76,10 @@ func listener(cmd *cobra.Command, args []string) {
 	}
 }
 
-func postMessageBytesToAttestor(messageBytes []byte) error {
-	req, err := http.NewRequest("POST", "http://localhost:3010/api/v1/attestor/attest", bytes.NewBuffer(messageBytes))
+func postMessageBytesToAttestor(messageBytes []byte, txnHash string) error {
+	url := fmt.Sprintf("http://localhost:3010/api/v1/attestor/attest/%s", txnHash)
+	fmt.Println("Posting to", url)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(messageBytes))
 	if err != nil {
 		return err
 	}

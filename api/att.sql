@@ -8,5 +8,5 @@ create table if not exists attestations (
     dest_domain integer not null,
     amount integer not null,
     message text not null,
-    signature text not null
+    txnid text not null
 );
