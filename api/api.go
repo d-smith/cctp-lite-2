@@ -56,6 +56,8 @@ func main() {
 
 	r.HandleFunc("/api/v1/attestor/attest/{txnid}", storeAttestation).Methods("POST")
 	r.HandleFunc("/api/v1/attestor/receipts/{destDomain}/{recipient}", listReceipts).Methods("GET")
+	r.HandleFunc("/api/v1/attestor/receipts/{destDomain}/{recipient}", listReceipts).Methods("GET")
+	r.HandleFunc("/api/v1/attestor/attesations/{id}", getAttestation).Methods("GET")
 	r.HandleFunc("/api/v1/attestor/receipts/setspent/{id}", setSpent).Methods("PUT")
 	n := negroni.Classic()
 	n.UseHandler(r)
@@ -64,6 +66,41 @@ func main() {
 	if err != nil {
 		log.Fatalln("Error starting server", err)
 	}
+}
+
+func getAttestation(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var message string
+	row := db.QueryRow("SELECT message FROM attestations WHERE id = ?", id)
+	err := row.Scan(&message)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	messageBytes, err := hexutil.Decode(string(message))
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	signature, err := signMessage(messageBytes)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	sigAsHex := hexutil.Encode(signature)
+
+	w.Header().Set("Content-Type", "application/text")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(sigAsHex))
+
 }
 
 func storeAttestation(w http.ResponseWriter, r *http.Request) {

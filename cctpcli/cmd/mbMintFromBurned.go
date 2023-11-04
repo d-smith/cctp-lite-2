@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -66,7 +67,15 @@ func mintFromBurned(receiverAddress, receiverKey, claimId string) {
 
 	claim := claims[idx]
 
-	txnid, err := moonbeamContext.MintFromBurned(receiverKey, claim.Message, claim.Signature)
+	signature, err := retrieveAttestation(claim.Id)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("Signature: ", signature)
+
+	txnid, err := moonbeamContext.MintFromBurned(receiverKey, claim.Message, signature)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -81,6 +90,30 @@ func mintFromBurned(receiverAddress, receiverKey, claimId string) {
 	}
 
 	fmt.Println("Claim marked as spent")
+}
+
+func retrieveAttestation(claimId int) (string, error) {
+	url := fmt.Sprintf("http://localhost:3010/api/v1/attestor/attesations/%d", claimId)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("error retrieving attestation")
+	}
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(b), nil
 }
 
 func setClaimAsSpent(claimId int) error {
