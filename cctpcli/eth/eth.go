@@ -374,3 +374,16 @@ func (ec *EthereumContext) MintFromBurned(receiverKey string, encodedMessageSent
 
 	return tx.Hash().Hex(), err
 }
+
+func (ec *EthereumContext) GetTxnBlock(txnHash string) (uint64, error) {
+	receipt, err := ec.client.TransactionReceipt(context.Background(), common.HexToHash(txnHash))
+	if err != nil {
+		return uint64(big.ToNegativeInf), err
+	}
+
+	return receipt.BlockNumber.Uint64(), nil
+}
+
+func (ec *EthereumContext) GetCurrentBlock() (uint64, error) {
+	return ec.client.BlockNumber(context.Background())
+}
