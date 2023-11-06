@@ -117,7 +117,7 @@ contract Transporter {
     function recover( 
         bytes calldata message, 
         bytes calldata attestation
-    ) external returns(address) {
+    ) external pure returns(address)  {
         // For this simplified version we assume one signature
 
         bytes32 digest = keccak256(message);
@@ -155,31 +155,9 @@ contract Transporter {
         return nonceReserved;
     }
 
-    //TODO start here
-    function recoverSigner(bytes32 message, bytes memory signature) public pure returns (address) {
-        // Split the signature into its components.
-        
-        (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
+    
 
-        // Recover the signer address.
-        address signerAddress = ecrecover(message, v, r, s);
-
-        // Return the signer address.
-        revert("boom");
-        return signerAddress;
-    }
-    //
-
-    function verifySignature(
-        bytes32 messageHash,
-        bytes memory signature,
-        address signer
-    ) public pure returns (bool) {
-        bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        revert("ping");
-        address recoveredAddress = ecrecover(hash, uint8(signature[64]), bytes32(signature), bytes32(signature));
-        return (recoveredAddress == signer);
-    }
+    
 
     function validateAttestation(
         bytes calldata message,
