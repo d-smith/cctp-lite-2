@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"database/sql"
 	"encoding/binary"
@@ -13,8 +14,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gorilla/mux"
 	"github.com/holiman/uint256"
 	"github.com/mattn/go-sqlite3"
@@ -23,8 +26,33 @@ import (
 
 var attestorPrivateKey *ecdsa.PrivateKey
 var db *sql.DB
+var confirmsForAttesation int
+var client *ethclient.Client
 
 func init() {
+	ethNodeURL := os.Getenv("ETH_URL")
+	if ethNodeURL == "" {
+		log.Fatal("ETH_NODE_URL not set")
+	}
+
+	clientInit, err := ethclient.Dial(ethNodeURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	client = clientInit
+
+	confirmsFromEnv := os.Getenv("ETH_ATTESTOR_CONFIRMS")
+	if confirmsFromEnv == "" {
+		log.Fatal("ETH_ATTESTOR_CONFIRMS not set")
+	}
+
+	confirms, err := strconv.ParseInt(confirmsFromEnv, 10, 32)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	confirmsForAttesation = int(confirms)
 
 	privateKeyFromEnv := os.Getenv("ETH_ATTESTOR_KEY")
 	if privateKeyFromEnv == "" {
@@ -35,7 +63,6 @@ func init() {
 		privateKeyFromEnv = privateKeyFromEnv[2:]
 	}
 
-	var err error
 	attestorPrivateKey, err = crypto.HexToECDSA(privateKeyFromEnv)
 	if err != nil {
 		log.Fatal(err)
@@ -68,16 +95,49 @@ func main() {
 	}
 }
 
+func isConfirmed(txnHash string) (bool, error) {
+	fmt.Printf("Checking if %s is confirmed\n", txnHash)
+	receipt, err := client.TransactionReceipt(context.Background(), common.HexToHash(txnHash))
+	if err != nil {
+		return false, err
+	}
+
+	txnBlockNo := receipt.BlockNumber.Uint64()
+	fmt.Printf("Transaction block number: %d\n", txnBlockNo)
+
+	currentBlockNo, err := client.BlockNumber(context.Background())
+	if err != nil {
+		return false, err
+	}
+
+	fmt.Printf("Current block number: %d\n", currentBlockNo)
+
+	return (currentBlockNo - txnBlockNo) >= uint64(confirmsForAttesation), nil
+}
+
 func getAttestation(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
 	var message string
-	row := db.QueryRow("SELECT message FROM attestations WHERE id = ?", id)
-	err := row.Scan(&message)
+	var txnid string
+	row := db.QueryRow("SELECT message, txnid FROM attestations WHERE id = ?", id)
+	err := row.Scan(&message, &txnid)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	confirmed, err := isConfirmed(txnid)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	if !confirmed {
+		http.Error(w, "Attestation not confirmed", 404)
 		return
 	}
 
