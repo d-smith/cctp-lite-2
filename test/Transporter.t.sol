@@ -171,7 +171,7 @@ contract TransportTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, ethSignedMessageHash);
         bytes memory enc = abi.encodePacked(r,s,v);
 
-        vm.expectRevert(Transporter.UnrecognizedAttestation.selector);
+        vm.expectRevert("UnrecognizedAttestation");
         remoteTransporter.receiveMessage(message, enc);
 
     }
@@ -184,7 +184,7 @@ contract TransportTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xf9832eeac47db42efeb2eca01e6479bfde00fda8fdd0624d45efd0e4b9ddcd3b, ethSignedMessageHash);
         bytes memory enc = abi.encodePacked(r,s,v);
 
-        vm.expectRevert(Transporter.UnsupportedBodyVersion.selector);
+        vm.expectRevert("UnsupportedBodyVersion");
         remoteTransporter.receiveMessage(message, enc);
 
     }
@@ -198,7 +198,7 @@ contract TransportTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xf9832eeac47db42efeb2eca01e6479bfde00fda8fdd0624d45efd0e4b9ddcd3b, ethSignedMessageHash);
         bytes memory enc = abi.encodePacked(r,s,v);
 
-        vm.expectRevert(Transporter.UnsupportedSourceDomain.selector);
+        vm.expectRevert("UnsupportedSourceDomain");
         remoteTransporter.receiveMessage(message, enc);
 
     }
@@ -212,7 +212,7 @@ contract TransportTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xf9832eeac47db42efeb2eca01e6479bfde00fda8fdd0624d45efd0e4b9ddcd3b, ethSignedMessageHash);
         bytes memory enc = abi.encodePacked(r,s,v);
 
-        vm.expectRevert(Transporter.UnsupportedDestinationDomain.selector);
+        vm.expectRevert("UnsupportedDestinationDomain");
         remoteTransporter.receiveMessage(message, enc);
 
     }
@@ -242,7 +242,7 @@ contract TransportTest is Test {
         assertEq(6, remoteBalance);
         assertEq(startSupply + 6, remoteToken.totalSupply());
 
-        vm.expectRevert(Transporter.RequestPreviouslyProcessed.selector);
+        vm.expectRevert("RequestPreviouslyProcessed");
         remoteTransporter.receiveMessage(message, enc);
 
     }

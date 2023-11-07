@@ -181,7 +181,7 @@ contract Transporter {
         
         //if(verifySignature(digest, attestation, remoteAttestor) == false) revert UnrecognizedAttestation();
         //if(signerAddress != remoteAttestor) revert (Strings.toHexString(uint160(signerAddress), 20));
-        if(signerAddress != remoteAttestor) revert UnrecognizedAttestation();
+        if(signerAddress != remoteAttestor) revert ("UnrecognizedAttestation");
 
          
 
@@ -189,9 +189,9 @@ contract Transporter {
         
         bytes29 _msg = message.ref(0);
         
-        if(Message._version(_msg) != messageBodyVersion) revert UnsupportedBodyVersion();
-        if(Message._sourceDomain(_msg) != remoteDomain) revert UnsupportedSourceDomain();
-        if(Message._destinationDomain(_msg) != localDomain) revert UnsupportedDestinationDomain();
+        if(Message._version(_msg) != messageBodyVersion) revert ("UnsupportedBodyVersion");
+        if(Message._sourceDomain(_msg) != remoteDomain) revert ("UnsupportedSourceDomain");
+        if(Message._destinationDomain(_msg) != localDomain) revert ("UnsupportedDestinationDomain");
         
 
         
@@ -200,7 +200,7 @@ contract Transporter {
         uint64 sendNonce = Message._nonce(_msg);
         
         XmitRec memory xmit = processedSends[sendNonce];
-        if(xmit.recipient != address(0)) revert RequestPreviouslyProcessed();
+        if(xmit.recipient != address(0)) revert ("RequestPreviouslyProcessed");
 
         // Extract sender and recipient, include those as the context assocaited
         // with the request nonce being processed.
@@ -225,14 +225,14 @@ contract Transporter {
 
         bytes29 _burnMsg = Message._messageBody(_msg);
         uint256 amount = BurnMessage._getAmount(_burnMsg);
-        if(amount <= 0) revert ZeroAmount();
+        if(amount <= 0) revert ("ZeroAmount");
 
         address burnMsgRecipient = Message.bytes32ToAddress(
             BurnMessage._getMintRecipient(_burnMsg)
         );
         
-        if(burnMsgRecipient == address(0)) revert ZeroAddressRecipient();
-        if(burnMsgRecipient != recipient) revert InconsistentRecipient();
+        if(burnMsgRecipient == address(0)) revert ("ZeroAddressRecipient");
+        if(burnMsgRecipient != recipient) revert ("InconsistentRecipient");
 
         IDelegatedMinter(minter).delegateMint(recipient, amount);
 
