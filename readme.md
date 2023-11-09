@@ -46,7 +46,38 @@ node script/mbdeploy-details.js
 ```
 
 
+### Metamask Integration
 
+Rough notes
 
+* Add local network and moonbeam local network in network settings
+  * Settings -> Networks -> Add a Network -> Add a network manually
+
+  For local eth:
+
+```Network name
+Ethereum Dev Node
+New RPC URL
+http://localhost:8545
+Chain ID
+1337
+Currency symbol
+ETH
+```
+
+For local moonbeam:
+
+```
+Network name
+Moonbeam Dev Node
+New RPC URL
+http://localhost:9933
+Chain ID
+1281
+Currency symbol
+ETH
+```
+
+To add dev accounts to metamask, use the private keys from the env - just import them and add a name.
 
 
